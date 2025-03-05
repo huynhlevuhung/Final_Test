@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        .game-board {
+            display: grid;
+            grid-template-columns: repeat(4, 130px);
+            grid-template-rows: repeat(3, 130px);
+            gap: 15px;
+            margin: 20px auto;
+            background: #fafbfd;
+            border-radius: 12px;
+            padding: 20px;
+        }
+
+        .game-tile {
+            width: 130px;
+            height: 130px;
+            font-size: 22px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 10px;
+            box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.2);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        
+        .game-tile:nth-child(1) { background: #a8f0c6; color: #066806; } /* Xanh lá */
+        .game-tile:nth-child(2) { background: #f8c8c8; color: #ab0c0c; } /* Hồng nhạt */
+        .game-tile:nth-child(3) { background: #b2d8ff; color: #0b5eb1; } /* Xanh dương */
+        .game-tile:nth-child(4) { background: #e5d1ff; color: #4d0991; } /* Tím */
+        .game-tile:nth-child(5) { background: #ffe8a1; color: #cc8800; } /* Vàng */
+        .game-tile:nth-child(6) { background: #f1abab; color: #cc0000; } /* Hồng đậm */
+        .game-tile:nth-child(7) { background: #aac6dc; color: #08427c; } /* Xanh nhạt */
+        .game-tile:nth-child(8) { background: #d8d8d8; color: #575555; } /* Xám */
+        .game-tile:nth-child(9) { background: #8ed1aa; color: #008000; } /* Xanh lá */
+        .game-tile:nth-child(10) { background: #f4d396; color: #cc6600; } /* Vàng cam */
+        .game-tile:nth-child(11) { background: #f2ff99; color: #668000; }
+        
+        .empty {
+            background: #000 !important;
+            cursor: default;
+        }
+    </style>
+</head>
+<body class="bg-white flex items-center justify-center min-h-screen text-black">
+    <div class="bg-white p-6 rounded-lg shadow-lg w-[80%]">
+        <div class="text-center mb-4">
+            <button id="startBtn" class="bg-green-600 text-white px-4 py-2 rounded">Bắt đầu</button>
+        </div>
+        <div class="flex justify-between gap-4">
+            <div class="game-board" id="board"></div>
+            <div class="space-y-4">
+                <div class="bg-green-300 p-4 text-center rounded-lg shadow-xl">
+                    <p class="text-lg font-semibold">Thời Gian</p>
+                    <p id="timer" class="text-2xl">00:00</p>
+                </div>
+                <div class="bg-white p-4 rounded-lg shadow-xl text-center">
+                    <p class="font-semibold">Hướng Dẫn Di Chuyển</p> 
+
+                    <div class="grid grid-rows-2 grid-cols-3 gap-4 p-6">                    
+                        <div></div> 
+                        <button class="border rounded-lg  bg-gray-300 p-1">
+                            <i class="fa-solid fa-arrow-up"></i>
+                        </button>
+                        <div></div>                                     
+                        <button class="border rounded-lg  bg-gray-300 p-1">
+                            <i class="fa-solid fa-arrow-left"></i>
+                        </button>
+                        <button class="border rounded-lg  bg-gray-300 p-1">
+                            <i class="fa-solid fa-arrow-down"></i>
+                        </button>
+                        <button class="border rounded-lg  bg-gray-300 p-1">
+                            <i class="fa-solid fa-arrow-right"></i>
+                        </button>
+                    </div>
+
+                    <div class="grid grid-rows-2 grid-cols-3 gap-4 p-6 pt-0">
+                        <div></div> 
+                        <button class="border rounded-lg  bg-gray-300 p-1 font-bold">W
+                        </button>
+                        <div></div> 
+            
+                        <button class="border rounded-lg  bg-gray-300 p-1 font-bold">A
+                        </button>
+                        <button class="border rounded-lg  bg-gray-300 p-1 font-bold">S
+                        </button>
+                        <button class="border rounded-lg  bg-gray-300 p-1 font-bold">D
+                        </button>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+        <div class="mt-6 bg-gray-300 p-4 rounded-lg shadow">
+            <p class="font-semibold text-center">Lịch Sử Lượt Chơi</p>
+            <table class="w-full mt-2 border-collapse border border-gray-400">
+                <thead>
+                    <tr class="bg-gray-200">
+                        <th class="border p-2">#</th>
+                        <th class="border p-2">Bước đi</th>
+                        <th class="border p-2">Thời Gian</th>
+                    </tr>
+                </thead>
+                <tbody id="history"></tbody>
+            </table>
+        </div>
+    </div>
+    <script>
+        const board = document.getElementById("board");
+        const startBtn = document.getElementById("startBtn");
+        const timerDisplay = document.getElementById("timer");
+        const historyTable = document.getElementById("history");
+
+        let tiles = [...Array(11).keys()].map(x => x + 1).concat(null);
+        let timer;
+        let seconds = 0;
+        let gameActive = false;
+
+        function handleKeyPress(event) {
+            if (!gameActive) return; // Chặn thao tác nếu game chưa bắt đầu
+            const emptyIndex = tiles.indexOf(null);
+            let targetIndex = -1;
+
+            switch (event.key) {
+                case "ArrowUp": // Mũi tên lên (w)
+                case "w":
+                    targetIndex = emptyIndex - 4;
+                    break;
+                case "ArrowDown": // Mũi tên xuống (s)
+                case "s":
+                    targetIndex = emptyIndex + 4;
+                    break;
+                case "ArrowLeft": // Mũi tên trái (a)
+                case "a":
+                    if (emptyIndex % 4 !== 0) targetIndex = emptyIndex - 1;
+                    break;
+                case "ArrowRight": // Mũi tên phải (d)
+                case "d":
+                    if (emptyIndex % 4 !== 3) targetIndex = emptyIndex + 1;
+                    break;
+            }
+            // Kiểm tra di chuyển hợp lệ
+            if (targetIndex >= 0 && targetIndex < tiles.length) {
+                [tiles[emptyIndex], tiles[targetIndex]] = [tiles[targetIndex], tiles[emptyIndex]];
+                moveCount++; // ✅ Tăng số bước di chuyển tại đây
+                renderBoard();
+                checkWin();
+            }
+        }
+        document.addEventListener("keydown", handleKeyPress);
+        startBtn.addEventListener("click", function () {
+            if (!gameActive) {
+                startGame();
+                startTimer();
+                gameActive = true;
+                startBtn.textContent = "Kết thúc";
+                startBtn.classList.replace("bg-green-600", "bg-red-500");
+            } else {
+                resetGame();
+                gameActive = false;
+                startBtn.textContent = "Bắt đầu";
+                startBtn.classList.replace("bg-red-500", "bg-green-600");
+            }
+        });
+
+        function startGame() {
+            tiles = shuffle([...Array(11).keys()].map(x => x + 1).concat(null));
+            renderBoard();
+            resetTimer();
+        }
+
+        function resetGame() {
+            tiles = [...Array(11).keys()].map(x => x + 1).concat(null);
+            renderBoard();
+            resetTimer();
+        }
+
+        function shuffle(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        }
+
+        function renderBoard() {
+            board.innerHTML = "";
+            tiles.forEach((num, index) => {
+                const tile = document.createElement("div");
+                tile.className = num ? "game-tile" : "game-tile empty";
+                tile.textContent = num || "";
+                tile.addEventListener("click", () => moveTile(index));
+                board.appendChild(tile);
+            });
+        }
+
+        function moveTile(index) {
+            if (!gameActive) return;
+            const emptyIndex = tiles.indexOf(null);
+            const validMoves = [emptyIndex - 1, emptyIndex + 1, emptyIndex - 4, emptyIndex + 4];
+
+            if (validMoves.includes(index) && (index % 4 === emptyIndex % 4 || Math.floor(index / 4) === Math.floor(emptyIndex / 4))) {
+                [tiles[index], tiles[emptyIndex]] = [tiles[emptyIndex], tiles[index]];
+                renderBoard();
+                addMoveToHistory(index);
+            }
+        }
+
+        function startTimer() {
+            clearInterval(timer);
+            seconds = 0;
+            timer = setInterval(() => {
+                seconds++;
+                timerDisplay.textContent = formatTime(seconds);
+            }, 1000);
+        }
+
+        function resetTimer() {
+            clearInterval(timer);
+            seconds = 0;
+            timerDisplay.textContent = "00:00";
+        }
+
+        function formatTime(seconds) {
+            const min = Math.floor(seconds / 60).toString().padStart(2, '0');
+            const sec = (seconds % 60).toString().padStart(2, '0');
+            return `${min}:${sec}`;
+        }
+
+        function addMoveToHistory(index) {
+            const row = document.createElement("tr");
+            row.innerHTML = `
+                <td class="border p-2">${historyTable.children.length + 1}</td>
+                <td class="border p-2">${index}</td>
+                <td class="border p-2">${formatTime(seconds)}</td>
+            `;
+            historyTable.appendChild(row);
+        }
+
+        renderBoard();
+
+    </script>
+</body>
+</html>
